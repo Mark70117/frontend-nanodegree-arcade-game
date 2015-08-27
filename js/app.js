@@ -18,7 +18,7 @@ Enemy.prototype.update = function(dt) {
 
 // Draw the enemy on the screen, required method for game
 Enemy.prototype.render = function() {
-    ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
+    //ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
 };
 
 
@@ -26,7 +26,11 @@ Enemy.prototype.render = function() {
 // This class requires an update(), render() and
 // a handleInput() method.
 var Player = function () {
-    this.sprite = 'images/char-cat-girl.png';
+    this.x = 200;
+    this.y = 400;
+    this.hStep = 100; //horizontal step
+    this.vStep = 85; //vertical step
+    this.sprite = 'images/char-boy.png';
 };
 
 Player.prototype.update = function (dt) {
@@ -34,7 +38,30 @@ Player.prototype.update = function (dt) {
 };
 
 Player.prototype.render = function (dt) {
+    ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
+}
 
+// TODO yike, lots of hardcoded number need to be gone
+Player.prototype.handleInput = function (key) {
+    var delta_x = 0;
+    var delta_y = 0;
+    switch(key) {
+        case 'left': delta_x = -1; break;
+        case 'right': delta_x = 1; break ;
+        case 'up': delta_y=-1; break ;
+        case 'down': delta_y=1; break;
+        default: ; // No Operation
+    }
+    this.x = Math.max(0, Math.min(400, this.x+this.hStep*delta_x));
+    this.y = Math.max(0, Math.min(400, this.y+this.vStep*delta_y));
+    this.checkWin();
+}
+
+Player.prototype.checkWin = function () {
+    if (this.y == 0) {
+        this.y = 400;
+        this.x = 200;
+    }
 }
 // Now instantiate your objects.
 // Place all enemy objects in an array called allEnemies

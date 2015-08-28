@@ -1,19 +1,44 @@
-/* jslint this: true*/
-/*global ctx, document, Resources */
+/*global
+    ctx, document, Resources
+*/
 /*property
     addEventListener, checkWin, drawImage, get, hStep, handleInput, keyCode,
     max, min, prototype, push, render, sprite, update, vStep, x, y
 */
 
-// Enemies our player must avoid
-var Enemy = function () {
-    'use strict';
-    var todo = 0;
-    // Variables applied to each of our instances go here,
-    // we've provided one for you to get started
+var ENVPLAYERSTART = {x: 200, y:400, hStep: 100, vStep: 85};
+var ENVWALLS = {left: 0, right: 400, top: 0, bottom: 400};
+var ENVENEMY = {
+    startX: -50,
+    maxX: 500,
+    minXVelocity: 38,
+    maxXVelocity: 102,
+    xCaptureDistance: 75,
+    yCaptureDistance: 5,
+    minN: 3
+};
+var ENVROAD = [ 60, 145, 230];
 
-    // The image/sprite for our enemies, this uses
-    // a helper we've provided to easily load images
+var player;
+var allEnemies = [];
+
+var randomVelocity = function () {
+    'use strict';
+    return Math.floor((Math.random() * (ENVENEMY.maxXVelocity - ENVENEMY.minXVelocity)) + ENVENEMY.minXVelocity);
+};
+
+var randomRoad = function () {
+    'use strict';
+    return ENVROAD[Math.floor(Math.random() * ENVROAD.length)];
+};
+
+// Enemies our player must avoid
+var Enemy = function (initialX, initialY, xVelocity) {
+    'use strict';
+
+    this.x = initialX;
+    this.y = initialY;
+    this.xVelocity = xVelocity;
     this.sprite = 'images/enemy-bug.png';
 };
 
@@ -21,39 +46,49 @@ var Enemy = function () {
 // Parameter: dt, a time delta between ticks
 Enemy.prototype.update = function (dt) {
     'use strict';
-    var todo = 0;
-    // You should multiply any movement by the dt parameter
-    // which will ensure the game runs at the same speed for
-    // all computers.
+
+    if (this.x > ENVENEMY.maxX) {
+        this.x = ENVENEMY.startX;
+        this.xVelocity = randomVelocity();
+    } else {
+        this.x += this.xVelocity * dt;
+    }
+    this.checkWin();
 };
 
 // Draw the enemy on the screen, required method for game
 Enemy.prototype.render = function () {
     'use strict';
-    var todo = 0;
-    //ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
+
+    ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
 };
 
+Enemy.prototype.checkWin = function () {
+    'use strict';
+    if ((Math.abs(this.y - player.y) <= ENVENEMY.yCaptureDistance) &&
+        (Math.abs(this.x - player.x) <= ENVENEMY.xCaptureDistance) ){
+        player.returnStart();
+    }
+};
 
-// Now write your own player class
-// This class requires an update(), render() and
-// a handleInput() method.
 var Player = function () {
     'use strict';
-    this.x = 200;
-    this.y = 400;
-    this.hStep = 100; //horizontal step
-    this.vStep = 85; //vertical step
+    this.x = ENVPLAYERSTART.x;
+    this.y = ENVPLAYERSTART.y;
+    this.hStep = ENVPLAYERSTART.hStep; //horizontal step
+    this.vStep = ENVPLAYERSTART.vStep; //vertical step
     this.sprite = 'images/char-boy.png';
 };
 
 Player.prototype.update = function (dt) {
     'use strict';
-    var todo = 0;
+    /* jshint unused: vars */ // dt
 };
 
 Player.prototype.render = function (dt) {
     'use strict';
+    /* jshint unused: vars */ // dt
+
     ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
 };
 
@@ -77,39 +112,42 @@ Player.prototype.handleInput = function (key) {
         break;
         // no default action required
     }
-    this.x = Math.max(0, Math.min(400, this.x + this.hStep * deltaX));
-    this.y = Math.max(0, Math.min(400, this.y + this.vStep * deltaY));
+    this.x = Math.max(ENVWALLS.left, Math.min(ENVWALLS.right, this.x + this.hStep * deltaX));
+    this.y = Math.max(ENVWALLS.top, Math.min(ENVWALLS.bottom, this.y + this.vStep * deltaY));
     this.checkWin();
 };
 
-Player.prototype.checkWin = function () {
+Player.prototype.returnStart = function () {
+    'use strict';
+    this.x = ENVPLAYERSTART.x;
+    this.y = ENVPLAYERSTART.y;
+};
+
+Player.prototype.checkWin =  function () {
     'use strict';
     if (this.y === 0) {
-        this.y = 400;
-        this.x = 200;
+        this.returnStart();
+        allEnemies.push (new Enemy(ENVENEMY.startX, randomRoad(), randomVelocity()));
     }
 };
-// Now instantiate your objects.
-// Place all enemy objects in an array called allEnemies
-// Place the player object in a variable called player
 
-var allEnemies = [];
-allEnemies.push(new Enemy());
+allEnemies.push (new Enemy(ENVENEMY.startX, ENVROAD[0], randomVelocity()));
+allEnemies.push (new Enemy(ENVENEMY.startX, ENVROAD[1], randomVelocity()));
+allEnemies.push (new Enemy(ENVENEMY.startX, ENVROAD[2], randomVelocity()));
 
-var player = new Player();
-
-
+player = new Player();
 
 // This listens for key presses and sends the keys to your
 // Player.handleInput() method. You don't need to modify this.
 document.addEventListener('keyup', function (e) {
     'use strict';
     var allowedKeys = {
-        '37': 'left',
-        '38': 'up',
-        '39': 'right',
-        '40': 'down'
+        37: 'left',
+        38: 'up',
+        39: 'right',
+        40: 'down'
     };
 
     player.handleInput(allowedKeys[e.keyCode]);
 });
+

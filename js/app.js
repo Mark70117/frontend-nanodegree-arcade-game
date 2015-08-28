@@ -1,9 +1,5 @@
-/* jslint
-    this
-*/
-/*global
-    ctx, document, Resources
-*/
+/* jslint this: true*/
+/*global ctx, document, Resources */
 /*property
     addEventListener, checkWin, drawImage, get, hStep, handleInput, keyCode,
     max, min, prototype, push, render, sprite, update, vStep, x, y

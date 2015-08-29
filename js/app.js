@@ -1,146 +1,189 @@
+// *global* comment to avoid jshint warning about use of following variables
 /*global
     ctx, document, Resources
 */
-/*property
-    addEventListener, checkWin, drawImage, get, hStep, handleInput, keyCode,
-    max, min, prototype, push, render, sprite, update, vStep, x, y
-*/
 
-var ENVPLAYERSTART = {x: 200, y:400, hStep: 100, vStep: 85};
-var ENVWALLS = {left: 0, right: 400, top: 0, bottom: 400};
-var ENVENEMY = {
-    startX: -50,
-    maxX: 500,
-    minXVelocity: 38,
-    maxXVelocity: 102,
-    xCaptureDistance: 75,
-    yCaptureDistance: 5,
-    minN: 3
+// game configuration, constant values, should not change during course of game
+var ENV_PLAYER_START = {
+    x: 200,
+    y: 400,
+    xStep: 100,
+    yStep: 85
 };
-var ENVROAD = [ 60, 145, 230];
+var ENV_WALLS = {
+    left: 0,
+    right: 400,
+    top: 0,
+    bottom: 400
+};
+var ENV_ENEMY = {
+    startX: -50,
+    maxX: 550,
+    minVelocity: 65,
+    maxVelocity: 135,
+    xCaptureDistance: 75,
+    yCaptureDistance: 5
+};
+var ENV_ROAD = [ 60, 145, 230];
 
+// global variable
 var player;
 var allEnemies = [];
 
-var randomVelocity = function () {
-    'use strict';
-    return Math.floor((Math.random() * (ENVENEMY.maxXVelocity - ENVENEMY.minXVelocity)) + ENVENEMY.minXVelocity);
-};
 
-var randomRoad = function () {
-    'use strict';
-    return ENVROAD[Math.floor(Math.random() * ENVROAD.length)];
-};
+// -- Class definitions
 
-// Enemies our player must avoid
-var Enemy = function (initialX, initialY, xVelocity) {
+// Base class for Enemy and Player
+var MovingPiece = function (initialX, initialY, sprite) {
     'use strict';
 
     this.x = initialX;
     this.y = initialY;
-    this.xVelocity = xVelocity;
-    this.sprite = 'images/enemy-bug.png';
+    this.sprite = sprite;
 };
+
+MovingPiece.prototype.render = function () {
+    'use strict';
+    ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
+
+};
+
+// Enemy class
+//      Enemies our player must avoid
+var Enemy = function (initialX, initialY) {
+    'use strict';
+
+    MovingPiece.call(this, initialX, initialY, 'images/enemy-bug.png');
+    this.xVelocity = this.randomVelocity();
+};
+Enemy.prototype = Object.create(MovingPiece.prototype);
+Enemy.prototype.constructor = MovingPiece;
 
 // Update the enemy's position, required method for game
 // Parameter: dt, a time delta between ticks
 Enemy.prototype.update = function (dt) {
     'use strict';
 
-    if (this.x > ENVENEMY.maxX) {
-        this.x = ENVENEMY.startX;
-        this.xVelocity = randomVelocity();
+    if (this.x > ENV_ENEMY.maxX) {
+        this.x = ENV_ENEMY.startX;
+        this.y = this.randomRoad();
+        this.xVelocity = this.randomVelocity();
     } else {
         this.x += this.xVelocity * dt;
     }
     this.checkWin();
 };
 
-// Draw the enemy on the screen, required method for game
-Enemy.prototype.render = function () {
-    'use strict';
-
-    ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
-};
-
+// Enemy win when close to player; on same track and within distance specified in game config
+//    enemy within capture distance forces player to return to start.
 Enemy.prototype.checkWin = function () {
     'use strict';
-    if ((Math.abs(this.y - player.y) <= ENVENEMY.yCaptureDistance) &&
-        (Math.abs(this.x - player.x) <= ENVENEMY.xCaptureDistance) ){
+
+    if ((Math.abs(this.y - player.y) <= ENV_ENEMY.yCaptureDistance) &&
+        (Math.abs(this.x - player.x) <= ENV_ENEMY.xCaptureDistance) ){
         player.returnStart();
     }
 };
 
+// generates a random velocity between min and max velocity
+Enemy.prototype.randomVelocity = function () {
+    'use strict';
+
+    return Math.floor((Math.random() * (ENV_ENEMY.maxVelocity - ENV_ENEMY.minVelocity)) + ENV_ENEMY.minVelocity);
+};
+
+// generates a random road for enemy to travel
+Enemy.prototype.randomRoad = function () {
+    'use strict';
+
+    return ENV_ROAD[Math.floor(Math.random() * ENV_ROAD.length)];
+};
+
+
+// Player class
 var Player = function () {
     'use strict';
-    this.x = ENVPLAYERSTART.x;
-    this.y = ENVPLAYERSTART.y;
-    this.hStep = ENVPLAYERSTART.hStep; //horizontal step
-    this.vStep = ENVPLAYERSTART.vStep; //vertical step
-    this.sprite = 'images/char-boy.png';
+
+    MovingPiece.call(this, ENV_PLAYER_START.x, ENV_PLAYER_START.y, 'images/char-boy.png');
+    this.deltaX = 0;
+    this.deltaY = 0;
 };
+Player.prototype = Object.create(MovingPiece.prototype);
+Player.prototype.constructor = MovingPiece;
 
-Player.prototype.update = function (dt) {
+// any specified change in player position is actually made
+//   Math.min and Math.max are used to keep player within boundaries of game
+Player.prototype.update = function () {
     'use strict';
-    /* jshint unused: vars */ // dt
-};
 
-Player.prototype.render = function (dt) {
-    'use strict';
-    /* jshint unused: vars */ // dt
-
-    ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
-};
-
-// TODO yike, lots of hardcoded number need to be gone
-Player.prototype.handleInput = function (key) {
-    'use strict';
-    var deltaX = 0;
-    var deltaY = 0;
-    switch (key) {
-    case 'left':
-        deltaX = -1;
-        break;
-    case 'right':
-        deltaX = 1;
-        break;
-    case 'up':
-        deltaY = -1;
-        break;
-    case 'down':
-        deltaY = 1;
-        break;
-        // no default action required
-    }
-    this.x = Math.max(ENVWALLS.left, Math.min(ENVWALLS.right, this.x + this.hStep * deltaX));
-    this.y = Math.max(ENVWALLS.top, Math.min(ENVWALLS.bottom, this.y + this.vStep * deltaY));
+    this.x = Math.max(ENV_WALLS.left, Math.min(ENV_WALLS.right, this.x + ENV_PLAYER_START.xStep * this.deltaX));
+    this.y = Math.max(ENV_WALLS.top, Math.min(ENV_WALLS.bottom, this.y + ENV_PLAYER_START.yStep * this.deltaY));
+    this.deltaX = 0;
+    this.deltaY = 0;
     this.checkWin();
 };
 
-Player.prototype.returnStart = function () {
+Player.prototype.handleInput = function (key) {
     'use strict';
-    this.x = ENVPLAYERSTART.x;
-    this.y = ENVPLAYERSTART.y;
-};
 
-Player.prototype.checkWin =  function () {
-    'use strict';
-    if (this.y === 0) {
-        this.returnStart();
-        allEnemies.push (new Enemy(ENVENEMY.startX, randomRoad(), randomVelocity()));
+    this.deltaX = 0;
+    this.deltaY = 0;
+    switch (key) {
+    case 'left':
+        this.deltaX = -1;
+        break;
+    case 'right':
+        this.deltaX = 1;
+        break;
+    case 'up':
+        this.deltaY = -1;
+        break;
+    case 'down':
+        this.deltaY = 1;
+        break;
+        // no default action required
     }
 };
 
-allEnemies.push (new Enemy(ENVENEMY.startX, ENVROAD[0], randomVelocity()));
-allEnemies.push (new Enemy(ENVENEMY.startX, ENVROAD[1], randomVelocity()));
-allEnemies.push (new Enemy(ENVENEMY.startX, ENVROAD[2], randomVelocity()));
+// player returns to start after player or enemy win
+Player.prototype.returnStart = function () {
+    'use strict';
 
+    this.x = ENV_PLAYER_START.x;
+    this.y = ENV_PLAYER_START.y;
+};
+
+// player wins when reached top (river)
+Player.prototype.checkWin =  function () {
+    'use strict';
+
+    if (this.y === ENV_WALLS.top) {
+        this.returnStart();
+        // player need more challenge, add enemy on each win.
+        //   start off screen to right, so randomized and restarted on left
+        allEnemies.push (new Enemy(ENV_ENEMY.maxX, 0));
+    }
+};
+
+
+// -- initial configuration
+//
+//   one enemy per path
+allEnemies.push (new Enemy(ENV_ENEMY.startX, ENV_ROAD[0]));
+allEnemies.push (new Enemy(ENV_ENEMY.startX, ENV_ROAD[1]));
+allEnemies.push (new Enemy(ENV_ENEMY.startX, ENV_ROAD[2]));
+
+// on player
 player = new Player();
+
+
+// Event Listeners
 
 // This listens for key presses and sends the keys to your
 // Player.handleInput() method. You don't need to modify this.
 document.addEventListener('keyup', function (e) {
     'use strict';
+
     var allowedKeys = {
         37: 'left',
         38: 'up',
@@ -150,4 +193,3 @@ document.addEventListener('keyup', function (e) {
 
     player.handleInput(allowedKeys[e.keyCode]);
 });
-
